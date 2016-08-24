@@ -1,78 +1,122 @@
+<!--
+  Copyright (c) 2011 Google Inc.
+
+  Licensed under the Apache License, Version 2.0 (the "License"); you may not
+  use this file except in compliance with the License. You may obtain a copy of
+  the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+  WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+  License for the specific language governing permissions and limitations under
+  the License.
+
+  To run this sample, set apiKey to your application's API key and clientId to
+  your application's OAuth 2.0 client ID. They can be generated at:
+    https://console.developers.google.com/apis/credentials?project=_
+  Then, add a JavaScript origin to the client that corresponds to the domain
+  where you will be running the script. Finally, activate the People API at:
+    https://console.developers.google.com/apis/library?project=_
+-->
 <!DOCTYPE html>
 <html>
-<style>
-form {
-    border: 3px solid #f1f1f1;
-}
+  <head>
+    <title>Say hello using the People API</title>
+    <meta charset='utf-8' />
+  </head>
+  <body>
+    <p>Say hello using the People API.</p>
 
-input[type=text], input[type=password] {
-    width: 100%;
-    padding: 12px 20px;
-    margin: 8px 0;
-    display: inline-block;
-    border: 1px solid #ccc;
-    box-sizing: border-box;
-}
+    <!--Add buttons to initiate auth sequence and sign out-->
+    <button id="authorize-button" style="display: none;">Authorize</button>
+    <button id="signout-button" style="display: none;">Sign Out</button>
 
-button {
-    background-color: #4CAF50;
-    color: white;
-    padding: 14px 20px;
-    margin: 8px 0;
-    border: none;
-    cursor: pointer;
-    width: 100%;
-}
+    <div id="content"></div>
 
-.cancelbtn {
-    width: auto;
-    padding: 10px 18px;
-    background-color: #f44336;
-}
+    <script type="text/javascript">
+      // Enter an API key from the Google API Console:
+      //   https://console.developers.google.com/apis/credentials?project=_
+      var apiKey = 'LDkggYMb6EpOTvvKYrrR9cvw';
 
+      // Enter a client ID for a web application from the Google API Console:
+      //   https://console.developers.google.com/apis/credentials?project=_
+      // In your API Console project, add a JavaScript origin that corresponds
+      //   to the domain where you will be running the script.
+      var clientId = '471755343907-g0bc57o0qtesemho4b2i7erbear1o7if.apps.googleusercontent.com';
 
-.container {
-    padding: 16px;
-}
+      // Enter one or more authorization scopes. Refer to the documentation for
+      // the API or https://developers.google.com/identity/protocols/googlescopes
+      // for details.
+      var scopes = 'https://www.googleapis.com/auth/calendar.readonly';
 
-span.psw {
-    float: right;
-    padding-top: 16px;
-}
+      var auth2; // The Sign-In object.
+      var authorizeButton = document.getElementById('authorize-button');
+      var signoutButton = document.getElementById('signout-button');
 
-/* Change styles for span and cancel button on extra small screens */
-@media screen and (max-width: 300px) {
-    span.psw {
-       display: block;
-       float: none;
-    }
-    .cancelbtn {
-       width: 100%;
-    }
-}
-</style>
-<body>
+      function handleClientLoad() {
+        // Load the API client and auth library
+        gapi.load('client:auth2', initAuth);
+      }
 
-<h2>Login Form</h2>
+      function initAuth() {
+        gapi.client.setApiKey(apiKey);
+        gapi.auth2.init({
+            client_id: clientId,
+            scope: scopes
+        }).then(function () {
+          auth2 = gapi.auth2.getAuthInstance();
 
-<form action="action_page.php">
- 
-  <div class="container">
-    <label><b>Username</b></label>
-    <input type="text" placeholder="Enter Username" name="uname" required>
+          // Listen for sign-in state changes.
+          auth2.isSignedIn.listen(updateSigninStatus);
 
-    <label><b>Password</b></label>
-    <input type="password" placeholder="Enter Password" name="psw" required>
-        
-    <button type="submit">Login</button>
-    <input type="checkbox" checked="checked"> Remember me
-  </div>
+          // Handle the initial sign-in state.
+          updateSigninStatus(auth2.isSignedIn.get());
 
-  <div class="container" style="background-color:#f1f1f1">
-    <button type="button" class="cancelbtn">Cancel</button>
-    <span class="psw">Forgot <a href="#">password?</a></span>
-  </div>
-</form>
+          authorizeButton.onclick = handleAuthClick;
+          signoutButton.onclick = handleSignoutClick;
+        });
+      }
 
-</body>
+      function updateSigninStatus(isSignedIn) {
+        if (isSignedIn) {
+          authorizeButton.style.display = 'none';
+          signoutButton.style.display = 'block';
+          makeApiCall();
+        } else {
+          authorizeButton.style.display = 'block';
+          signoutButton.style.display = 'none';
+        }
+      }
+
+      function handleAuthClick(event) {
+        auth2.signIn();
+      }
+
+      function handleSignoutClick(event) {
+        auth2.signOut();
+      }
+
+      // Load the API and make an API call.  Display the results on the screen.
+      function makeApiCall() {
+        gapi.client.load('people', 'v1', function() {
+          var request = gapi.client.people.people.get({
+            resourceName: 'people/me'
+          });
+          request.execute(function(resp) {
+            var p = document.createElement('p');
+            var name = resp.names[0].givenName;
+            p.appendChild(document.createTextNode('Hello, '+name+'!'));
+            document.getElementById('content').appendChild(p);
+          });
+        });
+        // Note: In this example, we use the People API to get the current
+        // user's name. In a real app, you would likely get basic profile info
+        // from the GoogleUser object to avoid the extra network round trip.
+        console.log(auth2.currentUser.get().getBasicProfile().getGivenName());
+      }
+    </script>
+    <script src="https://apis.google.com/js/api.js?onload=handleClientLoad"></script>
+  </body>
 </html>
